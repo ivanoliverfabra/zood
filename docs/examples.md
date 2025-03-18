@@ -9,7 +9,7 @@ Below are practical examples of how Zood can be used to validate and transform d
 Validate a user registration form with fields for `name`, `email`, `age`, and `password`.
 
 ```lua
-local Z = require("zood")
+local Z = require("z")
 
 local userSchema = Z.table({
   name = Z.string():min(3, { message = "Name must be at least 3 characters" }),
@@ -44,7 +44,7 @@ end
 Validate a configuration file with settings for `theme`, `notifications`, and `timeout`.
 
 ```lua
-local Z = require("zood")
+local Z = require("z")
 
 local configSchema = Z.table({
   theme = Z.string():enum({"light", "dark"}, { message = "Theme must be 'light' or 'dark'" }),
@@ -77,7 +77,7 @@ end
 Validate a product inventory with fields for `id`, `name`, `price`, and `tags`.
 
 ```lua
-local Z = require("zood")
+local Z = require("z")
 
 local productSchema = Z.table({
   id = Z.string():length(10, { message = "ID must be exactly 10 characters" }),
@@ -112,7 +112,7 @@ end
 Validate an API response containing a list of users.
 
 ```lua
-local Z = require("zood")
+local Z = require("z")
 
 local userSchema = Z.table({
   id = Z.string(),
@@ -152,7 +152,7 @@ end
 Validate a survey form with fields for `name`, `age`, `interests`, and `subscribe`.
 
 ```lua
-local Z = require("zood")
+local Z = require("z")
 
 local surveySchema = Z.table({
   name = Z.string():min(3, { message = "Name must be at least 3 characters" }),
@@ -187,7 +187,7 @@ end
 Validate a nested configuration file with settings for `server`, `database`, and `logging`.
 
 ```lua
-local Z = require("zood")
+local Z = require("z")
 
 local configSchema = Z.table({
   server = Z.table({
@@ -240,7 +240,7 @@ end
 Validate an e-commerce order with fields for `orderId`, `items`, `total`, and `shippingAddress`.
 
 ```lua
-local Z = require("zood")
+local Z = require("z")
 
 local orderSchema = Z.table({
   orderId = Z.string():length(10, { message = "Order ID must be exactly 10 characters" }),

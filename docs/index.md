@@ -19,7 +19,7 @@ Zood is a Lua library for **ComputerCraft** that provides a powerful and flexibl
 To use Zood in your ComputerCraft programs, download the `z.lua` file and include it in your project:
 
 ```lua
-os.loadAPI("z.lua")
+wget https://raw.githubusercontent.com/ivanoliverfabra/zood/main/lib/minified.lua
 ```
 
 ---
