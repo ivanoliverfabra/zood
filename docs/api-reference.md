@@ -103,6 +103,23 @@ Creates an array schema.
 - **props**: Additional properties for the schema.
 - **returns**: The schema instance for chaining.
 
+## ComputerCraft Schemas
+
+### `Z.peripheral(type, props)`
+
+Creates a peripheral schema.
+
+- **type**: The type of the peripheral.
+- **props**: Additional properties for the schema.
+- **returns**: The schema instance for chaining.
+
+**Example**:
+
+```lua
+local modemSchema = Z.peripheral("modem") -- Must be a modem peripheral
+local anyPeripheralSchema = Z.peripheral() -- Can be any peripheral
+```
+
 ## Complex Schemas
 
 ### `Z.union(schemas, props)`

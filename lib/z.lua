@@ -186,15 +186,7 @@ function BaseSchema:safeParse(data)
     for key, schema in pairs(self.fields) do
       if mergedData[key] ~= nil then
         local success, transformedValue = schema:safeParse(mergedData[key])
-        if success then
-          mergedData[key] = transformedValue
-        else
-          if isType("table", transformedValue) then
-            for _, e in ipairs(transformedValue) do table.insert(errors, e) end
-          else
-            table.insert(errors, transformedValue)
-          end
-        end
+        if success then mergedData[key] = transformedValue end
       end
     end
   end
@@ -774,8 +766,34 @@ function Z.union(schemas, props)
       end
     end
 
-    -- All options failed
     return false, parsePropsMessage(props, data, table.concat(errors, "\n"))
+  end)
+end
+
+--[[
+
+  Computercraft Schemas
+
+]]
+
+--- Create a schema for a Computercraft peripheral.
+-- @param ?peripheralType string: The type of peripheral (e.g., "monitor", "printer").
+-- @param props table: Additional properties for the schema.
+-- @return BaseSchema: The schema instance for chaining.
+function Z.peripheral(peripheralType, props)
+  if not props then props = {} end
+  return BaseSchema.new("peripheral"):validate(function(data)
+    if not peripheralType then
+      local name = peripheral.getName(data)
+      if not name then return false, parsePropsMessage(props, data, "Expected peripheral, got nil") end
+      return true
+    end
+
+    if peripheral.getType(data) ~= peripheralType then
+      return false, parsePropsMessage(props, data, "Expected peripheral of type " .. peripheralType .. ", got " ..
+          peripheral.getType(data))
+    end
+    return true
   end)
 end
 
