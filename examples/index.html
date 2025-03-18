@@ -543,7 +543,7 @@
 <hr />
 <h3 id="example-1-user-registration-form">Example 1: User Registration Form</h3>
 <p>Validate a user registration form with fields for <code>name</code>, <code>email</code>, <code>age</code>, and <code>password</code>.</p>
-<pre><code class="language-lua">local Z = require(&quot;zood&quot;)
+<pre><code class="language-lua">local Z = require(&quot;z&quot;)
 
 local userSchema = Z.table({
   name = Z.string():min(3, { message = &quot;Name must be at least 3 characters&quot; }),
@@ -573,7 +573,7 @@ end
 <hr />
 <h3 id="example-2-configuration-file">Example 2: Configuration File</h3>
 <p>Validate a configuration file with settings for <code>theme</code>, <code>notifications</code>, and <code>timeout</code>.</p>
-<pre><code class="language-lua">local Z = require(&quot;zood&quot;)
+<pre><code class="language-lua">local Z = require(&quot;z&quot;)
 
 local configSchema = Z.table({
   theme = Z.string():enum({&quot;light&quot;, &quot;dark&quot;}, { message = &quot;Theme must be 'light' or 'dark'&quot; }),
@@ -601,7 +601,7 @@ end
 <hr />
 <h3 id="example-3-product-inventory">Example 3: Product Inventory</h3>
 <p>Validate a product inventory with fields for <code>id</code>, <code>name</code>, <code>price</code>, and <code>tags</code>.</p>
-<pre><code class="language-lua">local Z = require(&quot;zood&quot;)
+<pre><code class="language-lua">local Z = require(&quot;z&quot;)
 
 local productSchema = Z.table({
   id = Z.string():length(10, { message = &quot;ID must be exactly 10 characters&quot; }),
@@ -631,7 +631,7 @@ end
 <hr />
 <h3 id="example-4-api-response">Example 4: API Response</h3>
 <p>Validate an API response containing a list of users.</p>
-<pre><code class="language-lua">local Z = require(&quot;zood&quot;)
+<pre><code class="language-lua">local Z = require(&quot;z&quot;)
 
 local userSchema = Z.table({
   id = Z.string(),
@@ -666,7 +666,7 @@ end
 <hr />
 <h3 id="example-5-survey-form">Example 5: Survey Form</h3>
 <p>Validate a survey form with fields for <code>name</code>, <code>age</code>, <code>interests</code>, and <code>subscribe</code>.</p>
-<pre><code class="language-lua">local Z = require(&quot;zood&quot;)
+<pre><code class="language-lua">local Z = require(&quot;z&quot;)
 
 local surveySchema = Z.table({
   name = Z.string():min(3, { message = &quot;Name must be at least 3 characters&quot; }),
@@ -696,7 +696,7 @@ end
 <hr />
 <h3 id="example-6-nested-configuration">Example 6: Nested Configuration</h3>
 <p>Validate a nested configuration file with settings for <code>server</code>, <code>database</code>, and <code>logging</code>.</p>
-<pre><code class="language-lua">local Z = require(&quot;zood&quot;)
+<pre><code class="language-lua">local Z = require(&quot;z&quot;)
 
 local configSchema = Z.table({
   server = Z.table({
@@ -744,7 +744,7 @@ end
 <hr />
 <h3 id="example-7-e-commerce-order">Example 7: E-Commerce Order</h3>
 <p>Validate an e-commerce order with fields for <code>orderId</code>, <code>items</code>, <code>total</code>, and <code>shippingAddress</code>.</p>
-<pre><code class="language-lua">local Z = require(&quot;zood&quot;)
+<pre><code class="language-lua">local Z = require(&quot;z&quot;)
 
 local orderSchema = Z.table({
   orderId = Z.string():length(10, { message = &quot;Order ID must be exactly 10 characters&quot; }),

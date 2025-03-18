@@ -429,6 +429,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#zanyprops" class="md-nav__link">
+    <span class="md-ellipsis">
+      Z.any(props)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -457,6 +466,30 @@
   <a href="#zarrayelementschema-props" class="md-nav__link">
     <span class="md-ellipsis">
       Z.array(elementSchema, props)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#computercraft-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      ComputerCraft Schemas
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ComputerCraft Schemas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zperipheraltype-props" class="md-nav__link">
+    <span class="md-ellipsis">
+      Z.peripheral(type, props)
     </span>
   </a>
   
@@ -541,6 +574,24 @@
   <a href="#urlprops" class="md-nav__link">
     <span class="md-ellipsis">
       :url(props)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#domainprops" class="md-nav__link">
+    <span class="md-ellipsis">
+      :domain(props)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ipprops" class="md-nav__link">
+    <span class="md-ellipsis">
+      :ip(props)
     </span>
   </a>
   
@@ -862,6 +913,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#zanyprops" class="md-nav__link">
+    <span class="md-ellipsis">
+      Z.any(props)
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -890,6 +950,30 @@
   <a href="#zarrayelementschema-props" class="md-nav__link">
     <span class="md-ellipsis">
       Z.array(elementSchema, props)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#computercraft-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      ComputerCraft Schemas
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ComputerCraft Schemas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zperipheraltype-props" class="md-nav__link">
+    <span class="md-ellipsis">
+      Z.peripheral(type, props)
     </span>
   </a>
   
@@ -974,6 +1058,24 @@
   <a href="#urlprops" class="md-nav__link">
     <span class="md-ellipsis">
       :url(props)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#domainprops" class="md-nav__link">
+    <span class="md-ellipsis">
+      :domain(props)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ipprops" class="md-nav__link">
+    <span class="md-ellipsis">
+      :ip(props)
     </span>
   </a>
   
@@ -1211,6 +1313,12 @@
 <li><strong>props</strong>: Additional properties for the schema.</li>
 <li><strong>returns</strong>: The schema instance for chaining.</li>
 </ul>
+<h3 id="zanyprops"><code>Z.any(props)</code></h3>
+<p>Creates a schema that accepts any data type.</p>
+<ul>
+<li><strong>props</strong>: Additional properties for the schema.</li>
+<li><strong>returns</strong>: The schema instance for chaining.</li>
+</ul>
 <h2 id="compound-schemas">Compound Schemas</h2>
 <h3 id="ztablefields-props"><code>Z.table(fields, props)</code></h3>
 <p>Creates a table schema.</p>
@@ -1226,6 +1334,18 @@
 <li><strong>props</strong>: Additional properties for the schema.</li>
 <li><strong>returns</strong>: The schema instance for chaining.</li>
 </ul>
+<h2 id="computercraft-schemas">ComputerCraft Schemas</h2>
+<h3 id="zperipheraltype-props"><code>Z.peripheral(type, props)</code></h3>
+<p>Creates a peripheral schema.</p>
+<ul>
+<li><strong>type</strong>: The type of the peripheral.</li>
+<li><strong>props</strong>: Additional properties for the schema.</li>
+<li><strong>returns</strong>: The schema instance for chaining.</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<pre><code class="language-lua">local modemSchema = Z.peripheral(&quot;modem&quot;) -- Must be a modem peripheral
+local anyPeripheralSchema = Z.peripheral() -- Can be any peripheral
+</code></pre>
 <h2 id="complex-schemas">Complex Schemas</h2>
 <h3 id="zunionschemas-props"><code>Z.union(schemas, props)</code></h3>
 <p>Creates a union schema.</p>
@@ -1296,12 +1416,35 @@ local schema = Z.string():max(20)  -- String must be at most 20 characters long
 <hr />
 <h3 id="urlprops"><code>:url(props)</code></h3>
 <p>Validates that a string is a valid URL.</p>
+<p>The pattern used is <code>[a-z]*://[^ &gt;,;]*</code>.</p>
+<p>It's not super strict, but it should catch most URLs.
+If you have a more strict pattern, let me know.</p>
 <ul>
 <li><strong><code>props</code></strong>: Optional properties, such as a custom error message.</li>
 <li><strong>Returns</strong>: The schema instance for chaining.</li>
 </ul>
 <p><strong>Example</strong>:</p>
 <pre><code class="language-lua">local schema = Z.string():url() -- Must be a valid URL
+</code></pre>
+<hr />
+<h3 id="domainprops"><code>:domain(props)</code></h3>
+<p>Validates that a string is a valid domain name.</p>
+<ul>
+<li><strong><code>props</code></strong>: Optional properties, such as a custom error message.</li>
+<li><strong>Returns</strong>: The schema instance for chaining.</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<pre><code class="language-lua">local schema = Z.string():domain() -- Must be a valid domain name
+</code></pre>
+<hr />
+<h3 id="ipprops"><code>:ip(props)</code></h3>
+<p>Validates that a string is a valid IP address.</p>
+<ul>
+<li><strong><code>props</code></strong>: Optional properties, such as a custom error message.</li>
+<li><strong>Returns</strong>: The schema instance for chaining.</li>
+</ul>
+<p><strong>Example</strong>:</p>
+<pre><code class="language-lua">local schema = Z.string():ip() -- Must be a valid IP address
 </code></pre>
 <hr />
 <h3 id="patternpattern-props"><code>:pattern(pattern, props)</code></h3>
