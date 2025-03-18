@@ -210,6 +210,21 @@ local schema = Z.string():url() -- Must be a valid URL
 
 ---
 
+### `:ip(props)`
+
+Validates that a string is a valid IP address.
+
+- **`props`**: Optional properties, such as a custom error message.
+- **Returns**: The schema instance for chaining.
+
+**Example**:
+
+```lua
+local schema = Z.string():ip() -- Must be a valid IP address
+```
+
+---
+
 ### `:pattern(pattern, props)`
 
 Validates that a string matches a regex pattern.

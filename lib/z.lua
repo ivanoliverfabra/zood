@@ -446,7 +446,7 @@ function BaseSchema:url(props)
 
     if not isType("string", data) then return false, "Expected string, got " .. type(data) end
 
-    local pattern = "^https?://[%w%.%-]+%.[a-zA-Z]+$"
+    local pattern = "^https?://([%w%.%-]+%.[a-zA-Z]+|localhost|%d+%.%d+%.%d+%.%d+)$"
     if not string.match(data, pattern) then
       return false, parsePropsMessage(props, data, "Value must be a valid URL, got " .. data)
     end
@@ -455,6 +455,32 @@ function BaseSchema:url(props)
   end
 
   self.url = true
+  return self
+end
+
+--- Validate that the string is a valid IP address.
+-- @param props table: Additional properties for the schema.
+-- @return BaseSchema: The schema instance for chaining.
+function BaseSchema:ip(props)
+  if not props then props = {} end
+  local prevValidate = self.validate or function(data)
+    return true
+  end
+  self.validate = function(data)
+    local success, err = prevValidate(data)
+    if not success then return false, err end
+
+    if not isType("string", data) then return false, "Expected string, got " .. type(data) end
+
+    local pattern = "^%d+%.%d+%.%d+%.%d+$"
+    if not string.match(data, pattern) then
+      return false, parsePropsMessage(props, data, "Value must be a valid IP address, got " .. data)
+    end
+
+    return true
+  end
+
+  self.ip = true
   return self
 end
 

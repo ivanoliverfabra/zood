@@ -6,19 +6,7 @@ This guide will walk you through the process of installing Zood and using it in 
 
 ## Installation
 
-### Step 1: Download Zood
-
-Download the `z.lua` file from the [Zood GitHub repository](https://github.com/yourusername/zood) and place it in your ComputerCraft program's directory.
-
-### Step 2: Include Zood in Your Program
-
-To use Zood in your program, load it using `os.loadAPI`:
-
-```lua
-os.loadAPI("z.lua")
-```
-
-This will make the Zood library available in your program under the `Z` namespace.
+Download the Zood library from [Pinestore](https://pinestore.cc/projects/135/zood) or use `wget run https://pinestore.cc/d/135`.
 
 ---
 
