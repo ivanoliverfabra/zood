@@ -35,6 +35,7 @@ end
 -- @param default string: The default message if none is provided.
 -- @return string: The parsed message.
 local function parsePropsMessage(props, data, default)
+  props = props or {}
   if not props.message then return default end
   if type(props.message) == "function" then return props.message(data) end
   if string.find(props.message, "%%s") then return string.format(props.message, data) end
@@ -260,7 +261,6 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:min(value, props)
-  if not props then props = {} end
 
   self.validate = self.validate or function(data)
     return true
@@ -290,7 +290,6 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:max(value, props)
-  if not props then props = {} end
 
   self.validate = self.validate or function(data)
     return true
@@ -325,7 +324,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:positive(props)
-  if not props then props = {} end
+
   local prevValidate = self.validate or function(data)
     return true
   end
@@ -348,7 +347,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:negative(props)
-  if not props then props = {} end
+
   local prevValidate = self.validate or function(data)
     return true
   end
@@ -372,7 +371,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:length(length, props)
-  if not props then props = {} end
+
   self.validate = self.validate or function(data)
     return true
   end
@@ -402,7 +401,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:email(props)
-  if not props then props = {} end
+
   local prevValidate = self.validate or function(data)
     return true
   end
@@ -428,17 +427,20 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:url(props)
-  if not props then props = {} end
+
   local prevValidate = self.validate or function(data)
     return true
   end
+
   self.validate = function(data)
     local success, err = prevValidate(data)
     if not success then return false, err end
 
-    if not isType("string", data) then return false, "Expected string, got " .. type(data) end
+    if not isType("string", data) then
+      return false, parsePropsMessage(props, data, "Expected string, got " .. type(data))
+    end
 
-    local pattern = "^https?://([%w%.%-]+%.[a-zA-Z]+|localhost|%d+%.%d+%.%d+%.%d+)$"
+    local pattern = "[a-z]*://[^ >,;]*"
     if not string.match(data, pattern) then
       return false, parsePropsMessage(props, data, "Value must be a valid URL, got " .. data)
     end
@@ -450,11 +452,39 @@ function BaseSchema:url(props)
   return self
 end
 
+--- Validate that the string is a valid domain.
+-- @param props table: Additional properties for the schema.
+-- @return BaseSchema: The schema instance for chaining.
+function BaseSchema:domain(props)
+
+  local prevValidate = self.validate or function(data)
+    return true
+  end
+  self.validate = function(data)
+    local success, err = prevValidate(data)
+    if not success then return false, err end
+
+    if not isType("string", data) then return false, "Expected string, got " .. type(data) end
+
+    if (data == "localhost") then return true end
+
+    local pattern = "^[%w%.%-]+%.[a-zA-Z]+$"
+    if not string.match(data, pattern) then
+      return false, parsePropsMessage(props, data, "Value must be a valid domain, got " .. data)
+    end
+
+    return true
+  end
+
+  self.domain = true
+  return self
+end
+
 --- Validate that the string is a valid IP address.
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:ip(props)
-  if not props then props = {} end
+
   local prevValidate = self.validate or function(data)
     return true
   end
@@ -481,7 +511,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:pattern(pattern, props)
-  if not props then props = {} end
+
   local prevValidate = self.validate or function(data)
     return true
   end
@@ -507,7 +537,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:enum(values, props)
-  if not props then props = {} end
+
   local prevValidate = self.validate or function(data)
     return true
   end
@@ -576,7 +606,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:between(min, max, props)
-  if not props then props = {} end
+
   local prevValidate = self.validate or function(data)
     return true
   end
@@ -629,7 +659,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.string(props)
-  if not props then props = {} end
+
   return BaseSchema.new("string"):validate(function(data)
     if not isType("string", data) then
       return false, parsePropsMessage(props, data, "Expected string, got " .. type(data))
@@ -642,7 +672,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.number(props)
-  if not props then props = {} end
+
   return BaseSchema.new("number"):validate(function(data)
     if not isType("number", data) then
       return false, parsePropsMessage(props, data, "Expected number, got " .. type(data))
@@ -655,7 +685,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.boolean(props)
-  if not props then props = {} end
+
   return BaseSchema.new("boolean"):validate(function(data)
     if not isType("boolean", data) then
       return false, parsePropsMessage(props, data, "Expected boolean, got " .. type(data))
@@ -668,7 +698,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.any(props)
-  if not props then props = {} end
+
   return BaseSchema.new("any"):validate(function(data)
     return true
   end)
@@ -753,7 +783,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.union(schemas, props)
-  if not props then props = {} end
+
   return BaseSchema.new("union", schemas):validate(function(data)
     local errors = {}
     for i, schema in ipairs(schemas) do
@@ -781,7 +811,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.peripheral(peripheralType, props)
-  if not props then props = {} end
+
   return BaseSchema.new("peripheral"):validate(function(data)
     if not peripheralType then
       local name = peripheral.getName(data)

@@ -223,6 +223,11 @@ local schema = Z.string():email() -- Must be a valid email address
 
 Validates that a string is a valid URL.
 
+The pattern used is `[a-z]*://[^ >,;]*`.
+
+It's not super strict, but it should catch most URLs.
+If you have a more strict pattern, let me know.
+
 - **`props`**: Optional properties, such as a custom error message.
 - **Returns**: The schema instance for chaining.
 
@@ -230,6 +235,21 @@ Validates that a string is a valid URL.
 
 ```lua
 local schema = Z.string():url() -- Must be a valid URL
+```
+
+---
+
+### `:domain(props)`
+
+Validates that a string is a valid domain name.
+
+- **`props`**: Optional properties, such as a custom error message.
+- **Returns**: The schema instance for chaining.
+
+**Example**:
+
+```lua
+local schema = Z.string():domain() -- Must be a valid domain name
 ```
 
 ---
