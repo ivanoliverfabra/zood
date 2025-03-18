@@ -1,0 +1,32 @@
+site_name: Zood Documentation
+site_url: https://ivanoliverfabra.github.io/zood/
+repo_url: https://github.com/ivanoliverfabra/zood
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    primary: teal
+    accent: pink
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - content.code.annotate
+
+markdown_extensions:
+  - pymdownx.highlight:
+      use_pygments: true
+      pygments_style: monokai
+      linenums: true
+      anchor_linenums: true
+      line_spans: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - API Reference: api-reference.md
+  - Examples: examples.md
+
+plugins:
+  - search
