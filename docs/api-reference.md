@@ -78,6 +78,13 @@ Creates a boolean schema.
 - **props**: Additional properties for the schema.
 - **returns**: The schema instance for chaining.
 
+### `Z.any(props)`
+
+Creates a schema that accepts any data type.
+
+- **props**: Additional properties for the schema.
+- **returns**: The schema instance for chaining.
+
 ## Compound Schemas
 
 ### `Z.table(fields, props)`

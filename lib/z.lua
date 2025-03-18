@@ -672,6 +672,16 @@ function Z.boolean(props)
   end)
 end
 
+--- Create a any schema.
+-- @param props table: Additional properties for the schema.
+-- @return BaseSchema: The schema instance for chaining.
+function Z.any(props)
+  if not props then props = {} end
+  return BaseSchema.new("any"):validate(function(data)
+    return true
+  end)
+end
+
 --[[
   Compound Schemas
 ]]
