@@ -1,5 +1,5 @@
 local expect = require("cc.expect")
-local field = expect.field
+local expect, field = expect.expect, expect.field
 
 --- Check if the data matches the expected type.
 -- @param dataType string: The expected type (e.g., "string", "number").
