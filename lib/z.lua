@@ -1,31 +1,34 @@
---[[
-  Helper Functions
-]] --- Check if the data matches the expected type.
+local expect = require("cc.expect")
+local field = expect.field
+
+--- Check if the data matches the expected type.
 -- @param dataType string: The expected type (e.g., "string", "number").
 -- @param data any: The data to check.
 -- @return boolean: True if the data matches the type, false otherwise.
 local function isType(dataType, data)
+  expect(1, dataType, "string")
   if dataType == "array" then
-    if type(data) ~= "table" then return false end
-    for i, _ in ipairs(data) do if type(i) ~= "number" then return false end end
+    if type(data) ~= "table" then
+      return false
+    end
+    for i, _ in ipairs(data) do
+      if type(i) ~= "number" then
+        return false
+      end
+    end
     return true
   end
 
   return type(data) == dataType
 end
 
---[[
-  Stack Levels
-  1: Caller of customError
-  2: Validator function
-  3: Wrapper function
-]]
-
 --- Custom error function with improved formatting.
 -- @param message string: The error message.
 -- @param level number: The stack level to report (default: 1, the caller of this function).
 local function customError(message, level)
+  expect(1, message, "string")
   level = level or 1
+  expect(2, level, "number", "nil")
   error(message, level)
 end
 
@@ -35,10 +38,19 @@ end
 -- @param default string: The default message if none is provided.
 -- @return string: The parsed message.
 local function parsePropsMessage(props, data, default)
+  expect(1, props, "table", "nil")
+  expect(2, data, "any")
+  expect(3, default, "string")
   props = props or {}
-  if not props.message then return default end
-  if type(props.message) == "function" then return props.message(data) end
-  if string.find(props.message, "%%s") then return string.format(props.message, data) end
+  if not props.message then
+    return default
+  end
+  if type(props.message) == "function" then
+    return props.message(data)
+  end
+  if string.find(props.message, "%%s") then
+    return string.format(props.message, data)
+  end
   return tostring(props.message)
 end
 
@@ -46,12 +58,15 @@ end
 -- @param tbl table: The table to remove functions from.
 -- @return table: The table with functions removed.
 local function removeFunctionsFromTable(tbl)
+  expect(1, tbl, "table")
   local newTable = {}
   for k, v in pairs(tbl) do
     if type(v) == "function" then
       newTable[k] = nil
     elseif type(v) == "table" then
-      if next(v) ~= nil then newTable[k] = removeFunctionsFromTable(v) end
+      if next(v) ~= nil then
+        newTable[k] = removeFunctionsFromTable(v)
+      end
     else
       newTable[k] = v
     end
@@ -60,6 +75,7 @@ local function removeFunctionsFromTable(tbl)
 end
 
 local function transformAll(schema, data)
+  expect(1, schema, "table")
   if schema.type == "table" and schema.fields then
     local mergedData = {}
     for key, fieldSchema in pairs(schema.fields) do
@@ -72,12 +88,16 @@ local function transformAll(schema, data)
     return mergedData
   elseif schema.type == "array" then
     local mergedData = {}
-    for i, item in ipairs(data) do mergedData[i] = transformAll(schema.fields, item) end
+    for i, item in ipairs(data) do
+      mergedData[i] = transformAll(schema.fields, item)
+    end
     return mergedData
   elseif schema.type == "union" then
     for _, option in ipairs(schema.fields) do
       local success, result = option:safeParse(data)
-      if success then return result end
+      if success then
+        return result
+      end
     end
     return data
   else
@@ -104,6 +124,14 @@ BaseSchema.__index = BaseSchema
 -- @param error string: The error message that will be thrown if the schema is invalid.
 -- @return BaseSchema: A new schema.
 function BaseSchema.new(type, fields, optional, default, validate, transform, error)
+  expect(1, type, "string", "nil")
+  expect(2, fields, "table", "nil")
+  expect(3, optional, "boolean", "nil")
+  expect(4, default, "any")
+  expect(5, validate, "function", "nil")
+  expect(6, transform, "function", "nil")
+  expect(7, error, "string", "nil")
+
   local schema = setmetatable({}, BaseSchema)
   schema.type = type or "unknown"
   schema.fields = fields or {}
@@ -132,7 +160,9 @@ end
 -- @return any: The parsed data.
 function BaseSchema:parse(data)
   local success, result = self:safeParse(data)
-  if not success then customError("Errors:\n" .. table.concat(result, "\n"), 3) end
+  if not success then
+    customError("Errors:\n" .. table.concat(result, "\n"), 3)
+  end
   return result
 end
 
@@ -165,7 +195,9 @@ function BaseSchema:safeParse(data)
     mergedData = data
   end
 
-  if self.transform then mergedData = self.transform(mergedData) end
+  if self.transform then
+    mergedData = self.transform(mergedData)
+  end
 
   if not self.validate and not isType(self.type, mergedData) then
     table.insert(errors, string.format(self.error, type(mergedData)))
@@ -176,7 +208,9 @@ function BaseSchema:safeParse(data)
     local success, err = self.validate(mergedData)
     if not success then
       if isType("table", err) then
-        for _, e in ipairs(err) do table.insert(errors, e) end
+        for _, e in ipairs(err) do
+          table.insert(errors, e)
+        end
       else
         table.insert(errors, err or string.format(self.error, type(mergedData)))
       end
@@ -187,7 +221,9 @@ function BaseSchema:safeParse(data)
     for key, schema in pairs(self.fields) do
       if mergedData[key] ~= nil then
         local success, transformedValue = schema:safeParse(mergedData[key])
-        if success then mergedData[key] = transformedValue end
+        if success then
+          mergedData[key] = transformedValue
+        end
       end
     end
   end
@@ -206,7 +242,9 @@ function BaseSchema:nullable()
 
   local prevValidate = self.validate
   self.validate = function(data)
-    if data == nil then return true end
+    if data == nil then
+      return true
+    end
     return prevValidate(data)
   end
 
@@ -229,7 +267,9 @@ function BaseSchema:default(value)
 
   local prevValidate = self.validate
   self.validate = function(data)
-    if data == nil then return true end
+    if data == nil then
+      return true
+    end
     return prevValidate(data)
   end
 
@@ -240,6 +280,7 @@ end
 -- @param func function: The validation function.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:validate(func)
+  expect(1, func, "function")
   self.validate = func
   return self
 end
@@ -248,6 +289,7 @@ end
 -- @param message string: The error message.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:error(message)
+  expect(1, message, "string")
   self.error = message
   return self
 end
@@ -261,6 +303,8 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:min(value, props)
+  expect(1, value, "number")
+  expect(2, props, "table", "nil")
 
   self.validate = self.validate or function(data)
     return true
@@ -268,7 +312,9 @@ function BaseSchema:min(value, props)
   local prevValidate = self.validate
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
     if (isType("number", data) and data < value) then
       return false, parsePropsMessage(props, data, "Value must be at least " .. value .. ", got " .. data)
@@ -290,6 +336,8 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:max(value, props)
+  expect(1, value, "number")
+  expect(2, props, "table", "nil")
 
   self.validate = self.validate or function(data)
     return true
@@ -297,7 +345,9 @@ function BaseSchema:max(value, props)
   local prevValidate = self.validate
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
     local isNum, isStr, isArr = isType("number", data), isType("string", data), isType("array", data)
 
@@ -324,17 +374,24 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:positive(props)
+  expect(1, props, "table", "nil")
 
   local prevValidate = self.validate or function(data)
     return true
   end
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
-    if not isType("number", data) then return false, "Expected number, got " .. type(data) end
+    if not isType("number", data) then
+      return false, "Expected number, got " .. type(data)
+    end
 
-    if data <= 0 then return false, parsePropsMessage(props, data, "Value must be positive, got " .. data) end
+    if data <= 0 then
+      return false, parsePropsMessage(props, data, "Value must be positive, got " .. data)
+    end
 
     return true
   end
@@ -347,17 +404,24 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:negative(props)
+  expect(1, props, "table", "nil")
 
   local prevValidate = self.validate or function(data)
     return true
   end
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
-    if not isType("number", data) then return false, "Expected number, got " .. type(data) end
+    if not isType("number", data) then
+      return false, "Expected number, got " .. type(data)
+    end
 
-    if data >= 0 then return false, parsePropsMessage(props, data, "Value must be negative, got " .. data) end
+    if data >= 0 then
+      return false, parsePropsMessage(props, data, "Value must be negative, got " .. data)
+    end
 
     return true
   end
@@ -371,6 +435,8 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:length(length, props)
+  expect(1, length, "number")
+  expect(2, props, "table", "nil")
 
   self.validate = self.validate or function(data)
     return true
@@ -378,7 +444,9 @@ function BaseSchema:length(length, props)
   local prevValidate = self.validate
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
     local len
     if isType("string", data) or isType("array", data) then
@@ -401,15 +469,20 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:email(props)
+  expect(1, props, "table", "nil")
 
   local prevValidate = self.validate or function(data)
     return true
   end
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
-    if not isType("string", data) then return false, "Expected string, got " .. type(data) end
+    if not isType("string", data) then
+      return false, "Expected string, got " .. type(data)
+    end
 
     local pattern = "^[%w%.%%%+%-]+@[%w%.%-]+%.[a-zA-Z]+$"
     if not string.match(data, pattern) then
@@ -427,6 +500,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:url(props)
+  expect(1, props, "table", "nil")
 
   local prevValidate = self.validate or function(data)
     return true
@@ -434,7 +508,9 @@ function BaseSchema:url(props)
 
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
     if not isType("string", data) then
       return false, parsePropsMessage(props, data, "Expected string, got " .. type(data))
@@ -456,17 +532,24 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:domain(props)
+  expect(1, props, "table", "nil")
 
   local prevValidate = self.validate or function(data)
     return true
   end
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
-    if not isType("string", data) then return false, "Expected string, got " .. type(data) end
+    if not isType("string", data) then
+      return false, "Expected string, got " .. type(data)
+    end
 
-    if (data == "localhost") then return true end
+    if data == "localhost" then
+      return true
+    end
 
     local pattern = "^[%w%.%-]+%.[a-zA-Z]+$"
     if not string.match(data, pattern) then
@@ -484,15 +567,20 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:ip(props)
+  expect(1, props, "table", "nil")
 
   local prevValidate = self.validate or function(data)
     return true
   end
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
-    if not isType("string", data) then return false, "Expected string, got " .. type(data) end
+    if not isType("string", data) then
+      return false, "Expected string, got " .. type(data)
+    end
 
     local pattern = "^%d+%.%d+%.%d+%.%d+$"
     if not string.match(data, pattern) then
@@ -511,15 +599,21 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:pattern(pattern, props)
+  expect(1, pattern, "string")
+  expect(2, props, "table", "nil")
 
   local prevValidate = self.validate or function(data)
     return true
   end
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
-    if not isType("string", data) then return false, "Expected string, got " .. type(data) end
+    if not isType("string", data) then
+      return false, "Expected string, got " .. type(data)
+    end
 
     if not string.match(data, pattern) then
       return false, parsePropsMessage(props, data, "Value must match pattern '" .. pattern .. "', got " .. data)
@@ -537,15 +631,23 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:enum(values, props)
+  expect(1, values, "table")
+  expect(2, props, "table", "nil")
 
   local prevValidate = self.validate or function(data)
     return true
   end
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
-    for _, value in ipairs(values) do if data == value then return true end end
+    for _, value in ipairs(values) do
+      if data == value then
+        return true
+      end
+    end
 
     return false,
         parsePropsMessage(props, data, "Value must be one of " .. table.concat(values, ", ") .. ", got " .. data)
@@ -559,12 +661,15 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:trim(props)
+  expect(1, props, "table", "nil")
   local prevTransform = self.transform or function(data)
     return data
   end
   self.transform = function(data)
     data = prevTransform(data)
-    if type(data) == "string" then return string.match(data, "^%s*(.-)%s*$") end
+    if type(data) == "string" then
+      return string.match(data, "^%s*(.-)%s*$")
+    end
     return data
   end
   return self
@@ -574,12 +679,16 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:lower(props)
+  expect(1, props, "table", "nil")
+
   local prevTransform = self.transform or function(data)
     return data
   end
   self.transform = function(data)
     data = prevTransform(data)
-    if type(data) == "string" then return string.lower(data) end
+    if type(data) == "string" then
+      return string.lower(data)
+    end
     return data
   end
   return self
@@ -589,12 +698,16 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:upper(props)
+  expect(1, props, "table", "nil")
+
   local prevTransform = self.transform or function(data)
     return data
   end
   self.transform = function(data)
     data = prevTransform(data)
-    if type(data) == "string" then return string.upper(data) end
+    if type(data) == "string" then
+      return string.upper(data)
+    end
     return data
   end
   return self
@@ -606,13 +719,18 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:between(min, max, props)
+  expect(1, min, "number")
+  expect(2, max, "number")
+  expect(3, props, "table", "nil")
 
   local prevValidate = self.validate or function(data)
     return true
   end
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
 
     local value
     if type(data) == "number" then
@@ -640,12 +758,17 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function BaseSchema:custom(func, props)
+  expect(1, func, "function")
+  expect(2, props, "table", "nil")
+
   local prevValidate = self.validate or function(data)
     return true
   end
   self.validate = function(data)
     local success, err = prevValidate(data)
-    if not success then return false, err end
+    if not success then
+      return false, err
+    end
     return func(data)
   end
   return self
@@ -659,6 +782,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.string(props)
+  expect(1, props, "table", "nil")
 
   return BaseSchema.new("string"):validate(function(data)
     if not isType("string", data) then
@@ -672,6 +796,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.number(props)
+  expect(1, props, "table", "nil")
 
   return BaseSchema.new("number"):validate(function(data)
     if not isType("number", data) then
@@ -685,6 +810,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.boolean(props)
+  expect(1, props, "table", "nil")
 
   return BaseSchema.new("boolean"):validate(function(data)
     if not isType("boolean", data) then
@@ -698,6 +824,7 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.any(props)
+  expect(1, props, "table", "nil")
 
   return BaseSchema.new("any"):validate(function(data)
     return true
@@ -713,6 +840,9 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.table(fields, props)
+  expect(1, fields, "table")
+  expect(2, props, "table", "nil")
+
   return BaseSchema.new("table", fields):validate(function(data)
     local errors = {}
     if not isType("table", data) then
@@ -724,7 +854,9 @@ function Z.table(fields, props)
       local success, err = schema:safeParse(data[key])
       if not success then
         if type(err) == "table" then
-          for _, e in ipairs(err) do table.insert(errors, "Field '" .. key .. "': " .. e) end
+          for _, e in ipairs(err) do
+            table.insert(errors, "Field '" .. key .. "': " .. e)
+          end
         else
           table.insert(errors, "Field '" .. key .. "': " .. err)
         end
@@ -744,6 +876,9 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.array(elementSchema, props)
+  expect(1, elementSchema, "table")
+  expect(2, props, "table", "nil")
+
   return BaseSchema.new("array", elementSchema):validate(function(data)
     local errors = {}
     if not isType("table", data) then
@@ -755,7 +890,9 @@ function Z.array(elementSchema, props)
       local success, err = elementSchema:safeParse(item)
       if not success then
         if type(err) == "table" then
-          for _, e in ipairs(err) do table.insert(errors, "Element " .. i .. ": " .. e) end
+          for _, e in ipairs(err) do
+            table.insert(errors, "Element " .. i .. ": " .. e)
+          end
         else
           table.insert(errors, "Element " .. i .. ": " .. err)
         end
@@ -775,6 +912,7 @@ end
 ]]
 
 function Z.custom(validator)
+  expect(1, validator, "function")
   return BaseSchema.new("custom"):validate(validator)
 end
 
@@ -783,6 +921,8 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.union(schemas, props)
+  expect(1, schemas, "table")
+  expect(2, props, "table", "nil")
 
   return BaseSchema.new("union", schemas):validate(function(data)
     local errors = {}
@@ -811,11 +951,15 @@ end
 -- @param props table: Additional properties for the schema.
 -- @return BaseSchema: The schema instance for chaining.
 function Z.peripheral(peripheralType, props)
+  expect(1, peripheralType, "string", "nil")
+  expect(2, props, "table", "nil")
 
   return BaseSchema.new("peripheral"):validate(function(data)
     if not peripheralType then
       local name = peripheral.getName(data)
-      if not name then return false, parsePropsMessage(props, data, "Expected peripheral, got nil") end
+      if not name then
+        return false, parsePropsMessage(props, data, "Expected peripheral, got nil")
+      end
       return true
     end
 
@@ -832,6 +976,7 @@ end
 ]]
 
 function Z.toTable(schema)
+  expect(1, schema, "table")
   schema = removeFunctionsFromTable(schema)
 
   local function toTable(s)
@@ -839,20 +984,30 @@ function Z.toTable(schema)
       local output = {
         type = s.type
       }
-      if s.optional then output.optional = true end
-      if s.default ~= nil then output.default = s.default end
-      if s.error then output.error = s.error end
+      if s.optional then
+        output.optional = true
+      end
+      if s.default ~= nil then
+        output.default = s.default
+      end
+      if s.error then
+        output.error = s.error
+      end
 
       if s.type == "table" and s.fields then
         output.fields = {}
-        for key, fieldSchema in pairs(s.fields) do output.fields[key] = toTable(fieldSchema) end
+        for key, fieldSchema in pairs(s.fields) do
+          output.fields[key] = toTable(fieldSchema)
+        end
       elseif s.type == "array" then
         output.element = toTable(s.fields)
       elseif s.type == "enum" then
         output.values = s.fields
       elseif s.type == "union" then
         output.options = {}
-        for i, unionSchema in ipairs(s.fields) do output.options[i] = toTable(unionSchema) end
+        for i, unionSchema in ipairs(s.fields) do
+          output.options[i] = toTable(unionSchema)
+        end
       end
       return output
     else
@@ -872,12 +1027,22 @@ end
 -- @param name string: The name of the file.
 -- @param type string: The file type.
 function Z.toFile(schema, name, type)
-  if type ~= "json" and type ~= "lua" then customError("Invalid file type: " .. type) end
-  if not name then customError("File name is required") end
+  expect(1, schema, "table")
+  expect(2, name, "string")
+  expect(3, type, "string")
+
+  if type ~= "json" and type ~= "lua" then
+    customError("Invalid file type: " .. type)
+  end
+  if not name then
+    customError("File name is required")
+  end
 
   local path = fs.combine(shell.dir(), name .. "." .. type)
   local file = io.open(path, "w")
-  if not file then customError("Could not open file for writing: " .. path) end
+  if not file then
+    customError("Could not open file for writing: " .. path)
+  end
 
   if type == "json" then
     file:write(Z.toJSON(schema))
