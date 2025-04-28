@@ -35,27 +35,16 @@ local data = {
   email = "alice@example.com"
 }
 
-local success, result = schema:safeParse(data)
-
-if success then
-  print("Data is valid!")
-else
-  print("Validation errors:")
-  for _, err in ipairs(result) do
-    print(err)
+local ok, result = schema:safeParse(value)
+if not ok then
+  -- result is a ValidationError object
+  print(result:format())         -- Formatted error string (all errors, nicely formatted)
+  for _, err in ipairs(result.errors) do
+    print(err.message)           -- Each error message (raw)
+    -- err is a table with fields: message, code, path, value, expected, received, details
   end
 end
 ```
-
----
-
-## Documentation
-
-For detailed documentation, visit the [Zood Documentation](https://ivanoliverfabra.github.io/zood/).
-
-- [Getting Started](https://ivanoliverfabra.github.io/zood/getting-started): Learn how to install and use Zood.
-- [API Reference](https://ivanoliverfabra.github.io/zood/api-reference): Explore the full API and available methods.
-- [Examples](https://ivanoliverfabra.github.io/zood/examples): See practical examples of Zood in action.
 
 ---
 
