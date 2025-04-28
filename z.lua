@@ -1,3 +1,5 @@
+local pretty = require("cc.pretty")
+
 local Z = {}
 
 local function is_array(tbl)
@@ -161,72 +163,103 @@ Z._patterns = {
   time = "^%d{2}%:%d{2}%:%d{2}%.[%d%w]+Z$"
 }
 
+local function format_message(msg, ctx)
+  if type(msg) ~= "string" then return tostring(msg) or "[Zood] Unknown error" end
+
+  ctx = ctx or {}
+  -- Create safe path array
+  local safe_path = {}
+  if type(ctx.path) == "table" then
+    for _, v in ipairs(ctx.path) do
+      if type(v) == "string" or type(v) == "number" then safe_path[#safe_path + 1] = tostring(v) end
+    end
+  end
+
+  -- Pre-compute values
+  local value_length = (type(ctx.value) == "table" or type(ctx.value) == "string") and #ctx.value or 0
+
+  -- Define formatters
+  local formatters = {
+    ["%%s"] = tostring(ctx.value),
+    ["%%d"] = type(ctx.value) == "number" and tostring(math.floor(ctx.value)) or "0",
+    ["%%f"] = type(ctx.value) == "number" and tostring(ctx.value) or "0",
+    ["%%type"] = type(ctx.value),
+    ["%%path"] = table.concat(safe_path, "."),
+    ["%%expected"] = tostring(ctx.expected),
+    ["%%received"] = tostring(ctx.received),
+    ["%%arg"] = tostring(ctx.arg),
+    ["%%key"] = tostring(ctx.key),
+    ["%%index"] = tostring(ctx.index),
+    ["%%length"] = tostring(value_length),
+    ["%%code"] = tostring(ctx.code),
+    ["%%rule"] = tostring(ctx.rule),
+    ["%%schema"] = tostring(ctx.schemaType)
+  }
+
+  -- Replace all format specifiers
+  for pattern, replacement in pairs(formatters) do msg = msg:gsub(pattern, replacement) end
+
+  return msg
+end
+
+local function lookup_message(messages, ctx)
+  if not messages or not ctx then return nil end
+
+  -- Direct lookups
+  if ctx.schemaType then
+    local schema_messages = messages[ctx.schemaType]
+    if type(schema_messages) == "table" then
+      if ctx.rule and schema_messages[ctx.rule] then return schema_messages[ctx.rule] end
+      if ctx.code and schema_messages[ctx.code] then return schema_messages[ctx.code] end
+      return schema_messages
+    end
+  end
+
+  -- Fallback lookups
+  return messages[ctx.code] or messages[ctx.type] or messages[ctx.rule]
+end
+
 local function resolve_message(schema, rule, ctx, fallback)
-
+  -- Check rule-specific message
   if rule and rule.msg then
-    if type(rule.msg) == "function" then return rule.msg(ctx) end
-    return rule.msg
+    if type(rule.msg) == "function" then return format_message(rule.msg(ctx), ctx) end
+    return format_message(rule.msg, ctx)
   end
+
+  -- Check schema-specific message
   if schema and schema._opts and schema._opts.message then
-    if type(schema._opts.message) == "function" then return schema._opts.message(ctx) end
-    return schema._opts.message
+    if type(schema._opts.message) == "function" then return format_message(schema._opts.message(ctx), ctx) end
+    return format_message(schema._opts.message, ctx)
   end
 
-  local Z = _G.ZOOD_Z or _G.Z or rawget(_G, "Z")
-  Z = Z or rawget(package.loaded, "z") or rawget(package.loaded, "schema") or _G.Zood or _G.zood or _G.z
-  Z = Z or _G["Zood"] or _G["zood"] or _G["Z"] or _G["z"] or _G["schema"] or _G["Schema"]
-  local userMessages = Z and Z._config and Z._config.messages or {}
-  local defaultMessages = Z and Z._defaultMessages or {}
-  local function lookup(messages, ctx)
-    if not messages then return nil end
-    if ctx and ctx.schemaType and ctx.rule and messages[ctx.schemaType] and messages[ctx.schemaType][ctx.rule] then
-      return messages[ctx.schemaType][ctx.rule]
-    end
-    if ctx and ctx.schemaType and ctx.code and messages[ctx.schemaType] and messages[ctx.schemaType][ctx.code] then
-      return messages[ctx.schemaType][ctx.code]
-    end
-    if ctx and ctx.schemaType and messages[ctx.schemaType] then return messages[ctx.schemaType] end
-    if ctx and ctx.code and messages[ctx.code] then return messages[ctx.code] end
-    if ctx and ctx.type and messages[ctx.type] then return messages[ctx.type] end
-    if ctx and ctx.rule and messages[ctx.rule] then return messages[ctx.rule] end
-    return nil
-  end
-  local function parse_ctx_value_to_required_format(msg, ctx)
-    if type(msg) ~= "string" then return tostring(msg) or "[Zood] Unknown error" end
-    ctx = ctx or {}
+  local msg = nil
 
-    local path = ctx.path
-    if type(path) ~= "table" then path = {} end
-    local safe_path = {}
-    for i, v in ipairs(path) do
-      if v ~= nil and (type(v) == "string" or type(v) == "number") then safe_path[#safe_path + 1] = tostring(v) end
-    end
-    local formatters = {
-      ["%%s"] = tostring(ctx.value),
-      ["%%d"] = type(ctx.value) == "number" and tostring(math.floor(ctx.value)) or "0",
-      ["%%f"] = type(ctx.value) == "number" and tostring(ctx.value) or "0",
-      ["%%type"] = type(ctx.value),
-      ["%%path"] = table.concat(safe_path, "."),
-      ["%%expected"] = tostring(ctx.expected),
-      ["%%received"] = tostring(ctx.received),
-      ["%%arg"] = tostring(ctx.arg),
-      ["%%key"] = tostring(ctx.key),
-      ["%%index"] = tostring(ctx.index),
-      ["%%length"] = (type(ctx.value) == "table" and #ctx.value) or (type(ctx.value) == "string" and #ctx.value) or "0",
-      ["%%code"] = tostring(ctx.code),
-      ["%%rule"] = tostring(ctx.rule),
-      ["%%schema"] = tostring(ctx.schemaType)
-    }
-    local result = msg
-    for pattern, replacement in pairs(formatters) do result = result:gsub(pattern, replacement) end
-    return result
+  -- Get messages from config
+  local messages = Z and Z._config and Z._config.messages
+  if messages then
+    msg = lookup_message(messages, ctx)
+    if type(msg) == "table" then msg = msg[ctx.rule] or msg[ctx.code] or nil end
   end
 
-  local msg = (rule and rule.msg) or (schema and schema._opts and schema._opts.message) or
-                  (Z._config and Z._config.messages and lookup(Z._config.messages, ctx)) or
-                  lookup(Z._defaultMessages, ctx) or fallback
+  -- Fallback to default messages
+  if not msg and Z then
+    msg = lookup_message(Z._defaultMessages, ctx)
+    if type(msg) == "table" then msg = msg[ctx.rule] or msg[ctx.code] or nil end
+  end
 
-  return parse_ctx_value_to_required_format(msg, ctx)
+  -- Final fallback
+  msg = msg or fallback
+  pretty.pretty_print(msg)
+
+  -- Handle table messages
+  if type(msg) == "table" then
+    msg = (ctx.rule and msg[ctx.rule]) or (ctx.code and msg[ctx.code]) or "[Zood] Unknown error"
+  end
+
+  -- Handle function messages
+  if type(msg) == "function" then msg = msg(ctx) end
+
+  return format_message(msg, ctx)
 end
 
 local function make_error(ctx)
@@ -243,7 +276,13 @@ end
 
 local function format_path(path)
   if not path then return "" end
-  if type(path) == "table" then return table.concat(path, ".") end
+  if type(path) == "table" then
+    local safe_path = {}
+    for _, v in ipairs(path) do
+      if type(v) == "string" or type(v) == "number" then table.insert(safe_path, tostring(v)) end
+    end
+    return table.concat(safe_path, ".")
+  end
   return tostring(path)
 end
 
@@ -253,7 +292,10 @@ local function ValidationError(errors)
     format = function(self)
       local out = {}
       for _, err in ipairs(self.errors) do
-        table.insert(out, string.format("%s at '%s' (%s)", err.message, format_path(err.path), tostring(err.value)))
+        local path = format_path(err.path)
+        local message = path ~= "" and string.format("%s at '%s' (%s)", err.message, path, tostring(err.value)) or
+        string.format("%s (%s)", err.message, tostring(err.value))
+        table.insert(out, message)
       end
       return table.concat(out, "\n")
     end
@@ -297,14 +339,9 @@ function Schema:parse(value, opts)
 end
 
 function Schema:safeParse(value, opts)
-  local errors = Z._acquireTable()
-  local ok, result = self:_validate(value, opts or {}, errors, {})
-  if ok then
-    Z._releaseTable(errors)
-    return true, result
-  end
-  local out = ValidationError(errors)
-  Z._releaseTable(errors)
+  local ok, result, errtbl = self:_validate(value, opts or {}, {}, {})
+  if ok then return true, result end
+  local out = ValidationError(errtbl or {})
   return false, out
 end
 
@@ -557,6 +594,9 @@ function Schema:unique(opts)
 end
 
 function Schema:_validate(value, opts, errors, path)
+  -- Defensive: ensure errors is always a table
+  errors = errors or {}
+  path = path or {}
   if self._type == "string" then
     if value == nil then
       if self._default ~= nil then value = self._default end
@@ -573,7 +613,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -592,7 +632,7 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     local v = value
     for _, rule in ipairs(self._rules) do
@@ -612,7 +652,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "max" and #v > rule.arg then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -629,7 +669,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "length" and #v ~= rule.arg then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -646,7 +686,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "pattern" and not string.match(v, rule.arg) then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -663,7 +703,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "email" then
         if not string.match(v, Z._patterns.email) then
           table.insert(errors, make_error({
@@ -678,7 +718,7 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = v
           }))
-          return false
+          return false, nil, errors
         end
       elseif rule.name == "url" then
         if not string.match(v, Z._patterns.url) then
@@ -694,7 +734,7 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = v
           }))
-          return false
+          return false, nil, errors
         end
       elseif rule.name == "domain" then
         if not string.match(v, Z._patterns.domain) then
@@ -710,7 +750,7 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = v
           }))
-          return false
+          return false, nil, errors
         end
       elseif rule.name == "ip" then
         if not string.match(v, Z._patterns.ip) then
@@ -726,7 +766,7 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = v
           }))
-          return false
+          return false, nil, errors
         end
       elseif rule.name == "uuid" then
         if not string.match(v, Z._patterns.uuid) then
@@ -742,7 +782,7 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = v
           }))
-          return false
+          return false, nil, errors
         end
       elseif rule.name == "datetime" then
         if not string.match(v, Z._patterns.datetime) then
@@ -758,7 +798,7 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = v
           }))
-          return false
+          return false, nil, errors
         end
       elseif rule.name == "date" then
         if not string.match(v, Z._patterns.date) then
@@ -774,7 +814,7 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = v
           }))
-          return false
+          return false, nil, errors
         end
       elseif rule.name == "time" then
         if not string.match(v, Z._patterns.time) then
@@ -790,7 +830,7 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = v
           }))
-          return false
+          return false, nil, errors
         end
       elseif rule.name == "trim" then
         v = v:match("^%s*(.-)%s*$")
@@ -814,7 +854,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "endsWith" and string.sub(v, -#rule.arg) ~= rule.arg then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -831,7 +871,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "includes" and not string.find(v, rule.arg, 1, true) then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -848,7 +888,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._custom then
@@ -865,11 +905,11 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._transform then v = self._transform(v) end
-    return true, v
+    return true, v, errors
   elseif self._type == "number" then
     if value == nil then
       if self._default ~= nil then value = self._default end
@@ -886,7 +926,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -905,7 +945,7 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     local v = value
     for _, rule in ipairs(self._rules) do
@@ -925,7 +965,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "max" and v > rule.arg then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -942,7 +982,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "positive" and v <= 0 then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -956,7 +996,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "negative" and v >= 0 then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -970,7 +1010,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "integer" and v % 1 ~= 0 then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -984,7 +1024,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "between" and (v < rule.arg[1] or v > rule.arg[2]) then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -1001,7 +1041,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "multipleOf" and v % rule.arg ~= 0 then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -1018,7 +1058,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._custom then
@@ -1035,11 +1075,11 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._transform then v = self._transform(v) end
-    return true, v
+    return true, v, errors
   elseif self._type == "boolean" then
     if value == nil then
       if self._default ~= nil then value = self._default end
@@ -1056,7 +1096,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -1075,7 +1115,7 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     local v = value
     if self._custom then
@@ -1092,11 +1132,11 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._transform then v = self._transform(v) end
-    return true, v
+    return true, v, errors
   elseif self._type == "any" then
     if value == nil and self._default ~= nil then value = self._default end
     if self._nullable and value == nil then return true, nil end
@@ -1115,11 +1155,11 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = v
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._transform then v = self._transform(v) end
-    return true, v
+    return true, v, errors
   elseif self._type == "table" then
     if value == nil then
       if self._default ~= nil then value = self._default end
@@ -1136,7 +1176,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -1155,7 +1195,7 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     local out = {}
     for k, schema in pairs(self._shape) do
@@ -1163,7 +1203,7 @@ function Schema:_validate(value, opts, errors, path)
         local case = schema._when.cases[value[schema._when.field]]
         if case then
           local ok, v = case:_validate(value[k], opts, errors, {table.unpack(path or {}), k})
-          if not ok then return false end
+          if not ok then return false, nil, errors end
           out[k] = v
         else
           table.insert(errors, make_error({
@@ -1177,11 +1217,11 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = value
           }))
-          return false
+          return false, nil, errors
         end
       else
         local ok, v = schema:_validate(value[k], opts, errors, {table.unpack(path or {}), k})
-        if not ok then return false end
+        if not ok then return false, nil, errors end
         out[k] = v
       end
     end
@@ -1201,7 +1241,7 @@ function Schema:_validate(value, opts, errors, path)
             path = path,
             value = k
           }))
-          return false
+          return false, nil, errors
         end
       end
     elseif self._mode == "strip" then
@@ -1223,11 +1263,11 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = out
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._transform then out = self._transform(out) end
-    return true, out
+    return true, out, errors
   elseif self._type == "array" then
     if value == nil then
       if self._default ~= nil then value = self._default end
@@ -1244,7 +1284,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -1263,12 +1303,12 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     local out = {}
     for i, v in ipairs(value) do
       local ok, res = self._element:_validate(v, opts, errors, {table.unpack(path or {}), i})
-      if not ok then return false end
+      if not ok then return false, nil, errors end
       out[i] = res
     end
     for _, rule in ipairs(self._rules) do
@@ -1288,7 +1328,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = out
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "max" and #out > rule.arg then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -1305,7 +1345,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = out
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "length" and #out ~= rule.arg then
         table.insert(errors, make_error({
           message = resolve_message(self, rule, {
@@ -1322,7 +1362,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = out
         }))
-        return false
+        return false, nil, errors
       elseif rule.name == "unique" then
         local seen = {}
         for _, v in ipairs(out) do
@@ -1339,7 +1379,7 @@ function Schema:_validate(value, opts, errors, path)
               path = path,
               value = out
             }))
-            return false
+            return false, nil, errors
           end
           seen[v] = true
         end
@@ -1359,11 +1399,11 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = out
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._transform then out = self._transform(out) end
-    return true, out
+    return true, out, errors
   elseif self._type == "enum" then
     if value == nil then
       if self._default ~= nil then value = self._default end
@@ -1380,7 +1420,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -1399,9 +1439,9 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
-    return true, value
+    return true, value, errors
   elseif self._type == "literal" then
     if value == nil then
       if self._default ~= nil then value = self._default end
@@ -1418,7 +1458,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -1437,9 +1477,9 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
-    return true, value
+    return true, value, errors
   elseif self._type == "peripheral" then
     if value == nil then
       if self._default ~= nil then value = self._default end
@@ -1456,7 +1496,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -1475,7 +1515,7 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     if not peripheral then
       table.insert(errors, make_error({
@@ -1489,7 +1529,7 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     local p = peripheral.wrap(value)
     if not p then
@@ -1506,7 +1546,7 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     if self._peripheralType and peripheral.getType then
       local t = peripheral.getType(value)
@@ -1526,10 +1566,10 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
-    return true, value
+    return true, value, errors
   elseif self._type == "color" then
     if value == nil then
       if self._default ~= nil then value = self._default end
@@ -1546,7 +1586,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -1565,7 +1605,7 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     if value < 0 or value > 0xFFFFFF then
       table.insert(errors, make_error({
@@ -1581,9 +1621,9 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
-    return true, value
+    return true, value, errors
   elseif self._type == "side" then
     local valid_sides = {
       top = true,
@@ -1608,7 +1648,7 @@ function Schema:_validate(value, opts, errors, path)
           path = path,
           value = value
         }))
-        return false
+        return false, nil, errors
       end
     end
     if self._nullable and value == nil then return true, nil end
@@ -1626,9 +1666,9 @@ function Schema:_validate(value, opts, errors, path)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
-    return true, value
+    return true, value, errors
   end
 end
 
@@ -1805,9 +1845,9 @@ function Z.function_(opts)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
-    return true, value
+    return true, value, errors
   end
   return self
 end
@@ -1830,9 +1870,9 @@ function Z.custom(fn, opts)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
-    return true, value
+    return true, value, errors
   end
   return self
 end
@@ -1899,14 +1939,14 @@ function Z.intersection(schemas, opts)
     local out = {}
     for _, schema in ipairs(self._schemas) do
       local ok, v = schema:_validate(value, opts, errors, path)
-      if not ok then return false end
+      if not ok then return false, nil, errors end
       if type(v) == "table" then
         for k, val in pairs(v) do out[k] = val end
       else
         out = v
       end
     end
-    return true, out
+    return true, out, errors
   end
   return self
 end
@@ -1926,7 +1966,7 @@ function Z.discriminatedUnion(discriminator, schemas, opts)
         path = path,
         value = value
       }))
-      return false
+      return false, nil, errors
     end
     local tag = value[self._discriminator]
     for _, schema in ipairs(self._schemas) do
@@ -1940,7 +1980,7 @@ function Z.discriminatedUnion(discriminator, schemas, opts)
       path = path,
       value = tag
     }))
-    return false
+    return false, nil, errors
   end
   return self
 end
