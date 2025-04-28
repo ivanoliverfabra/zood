@@ -14,7 +14,7 @@ end
 
 local function shallow_copy(tbl)
   if type(tbl) ~= "table" then return tbl end
-  local t = Z._acquireTable()
+  local t = {}
   for k, v in pairs(tbl) do t[k] = v end
   return t
 end
@@ -304,29 +304,6 @@ local function ValidationError(errors)
       return self:format()
     end
   })
-end
-
-Z._tablePool = {}
-function Z._acquireTable()
-  local pool = Z._tablePool
-  if #pool > 0 then
-    local t = pool[#pool]
-    pool[#pool] = nil
-    return t
-  end
-  return {}
-end
-function Z._releaseTable(tbl)
-  if type(tbl) == "table" then
-    for k in pairs(tbl) do tbl[k] = nil end
-    table.insert(Z._tablePool, tbl)
-  end
-end
-
-function Z._cleanup()
-  Z._tablePool = {}
-  if Z._patternCache then for k in pairs(Z._patternCache) do Z._patternCache[k] = nil end end
-  if Z._messageCache then for k in pairs(Z._messageCache) do Z._messageCache[k] = nil end end
 end
 
 local Schema = {}
