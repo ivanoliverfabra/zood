@@ -1,5 +1,3 @@
-local pretty = require("cc.pretty")
-
 local Z = {}
 
 local function is_array(tbl)
@@ -249,7 +247,6 @@ local function resolve_message(schema, rule, ctx, fallback)
 
   -- Final fallback
   msg = msg or fallback
-  pretty.pretty_print(msg)
 
   -- Handle table messages
   if type(msg) == "table" then
