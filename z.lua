@@ -111,7 +111,7 @@ Z._defaultMessages = {
   },
   peripheral = {
     notFound = "Peripheral not found: %s",
-    wrongType = "Wrong peripheral type. Expected %s, got %s",
+    wrongType = "Wrong peripheral type. Expected %expected, got %received",
     invalid = "Invalid peripheral",
     missing = "No peripheral attached to %s",
     unavailable = "Peripheral is unavailable"
@@ -291,7 +291,7 @@ local function ValidationError(errors)
       for _, err in ipairs(self.errors) do
         local path = format_path(err.path)
         local message = path ~= "" and string.format("%s at '%s' (%s)", err.message, path, tostring(err.value)) or
-        string.format("%s (%s)", err.message, tostring(err.value))
+                            string.format("%s (%s)", err.message, tostring(err.value))
         table.insert(out, message)
       end
       return table.concat(out, "\n")
@@ -1474,7 +1474,7 @@ function Schema:_validate(value, opts, errors, path)
       end
     end
     if self._nullable and value == nil then return true, nil end
-    if type(value) ~= "string" then
+    if type(value) ~= "string" and type(value) ~= "table" then
       table.insert(errors, make_error({
         message = resolve_message(self, nil, {
           code = "type",
@@ -1483,7 +1483,7 @@ function Schema:_validate(value, opts, errors, path)
           value = value,
           received = type(value)
         }, function(ctx)
-          return string.format("Expected peripheral name, got %s", type(value))
+          return string.format("Expected peripheral name or peripheral object, got %s", type(value))
         end),
         code = "type",
         path = path,
@@ -1505,7 +1505,8 @@ function Schema:_validate(value, opts, errors, path)
       }))
       return false, nil, errors
     end
-    local p = peripheral.wrap(value)
+    local side = type(value) ~= "string" and peripheral.getName(value) or value
+    local p = peripheral.wrap(side)
     if not p then
       table.insert(errors, make_error({
         message = resolve_message(self, nil, {
@@ -1523,7 +1524,8 @@ function Schema:_validate(value, opts, errors, path)
       return false, nil, errors
     end
     if self._peripheralType and peripheral.getType then
-      local t = peripheral.getType(value)
+      local side = type(value) ~= "string" and peripheral.getName(value) or value
+      local t = peripheral.getType(side)
       if t ~= self._peripheralType then
         table.insert(errors, make_error({
           message = resolve_message(self, nil, {
@@ -1538,7 +1540,7 @@ function Schema:_validate(value, opts, errors, path)
           end),
           code = "wrongType",
           path = path,
-          value = value
+          value = t
         }))
         return false, nil, errors
       end
